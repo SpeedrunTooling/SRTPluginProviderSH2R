@@ -16,10 +16,12 @@ namespace SRTPluginProviderSH2R
 
         // Pointer Address Variables
         private int pointerPlayerStatus;
+        private int pointerEnemyStatus;
 
         // Pointer Classes
         private IntPtr BaseAddress { get; set; }
         private MultilevelPointer PointerPlayerStatus { get; set; }
+        private MultilevelPointer[] PointerEnemyStatus { get; set; }
 
         internal GameMemorySH2RScanner(Process process = null)
         {
@@ -44,7 +46,11 @@ namespace SRTPluginProviderSH2R
                 BaseAddress = process?.MainModule?.BaseAddress ?? IntPtr.Zero; // Bypass .NET's managed solution for getting this and attempt to get this info ourselves via PInvoke since some users are getting 299 PARTIAL COPY when they seemingly shouldn't.
 
                 // Setup the pointers.
-                PointerPlayerStatus = new MultilevelPointer(memoryAccess, (nint*)(BaseAddress + pointerPlayerStatus), 0x30, 0x300, 0x6B8);
+                PointerPlayerStatus = new MultilevelPointer(memoryAccess, (nint*)(BaseAddress + pointerPlayerStatus), 0x30, 0x2F0, 0x6C8, 0x1A8, 0x28, 0x6B8);
+
+                PointerEnemyStatus = new MultilevelPointer[GameMemorySH2R.ENEMY_ARRAY_SIZE];
+                for (int i = 0; i < GameMemorySH2R.ENEMY_ARRAY_SIZE; ++i)
+                    PointerEnemyStatus[i] = new MultilevelPointer(memoryAccess, (nint*)(BaseAddress + pointerEnemyStatus), 0x268, 0x110, (i + 1) * 0x8, 0x90, 0x938);
             }
         }
 
@@ -56,6 +62,7 @@ namespace SRTPluginProviderSH2R
                 case GameVersion.SH2R_20241006_071403:
                     {
                         pointerPlayerStatus = 0x08857AC0;
+                        pointerEnemyStatus = 0x08876338;
                         return version;
                     }
                 default:
@@ -66,11 +73,18 @@ namespace SRTPluginProviderSH2R
         internal void UpdatePointers()
         {
             PointerPlayerStatus.UpdatePointers();
+
+            for (int i = 0; i < GameMemorySH2R.ENEMY_ARRAY_SIZE; ++i)
+                PointerEnemyStatus[i].UpdatePointers();
         }
 
         internal unsafe IGameMemorySH2R Refresh()
         {
             PointerPlayerStatus.TryDerefFloat(0xF8, ref gameMemoryValues.playerHP);
+
+            for (int i = 0; i < GameMemorySH2R.ENEMY_ARRAY_SIZE; ++i)
+                if (!PointerEnemyStatus[i].TryDerefFloat(0xCC, ref gameMemoryValues.enemyHP[i]))
+                    gameMemoryValues.enemyHP[i] = 0f;
 
             HasScanned = true;
             return gameMemoryValues;
