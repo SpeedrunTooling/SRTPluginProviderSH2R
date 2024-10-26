@@ -58,6 +58,12 @@ namespace SRTPluginProviderSH2R
         {
             switch (version)
             {
+                case GameVersion.SH2R_20241025_110158:
+                    {
+                        pointerPlayerStatus = 0x0827B040;
+                        pointerEnemyStatus = 0x08299898;
+                        return version;
+                    }
                 case GameVersion.SH2R_20241021_085939:
                     {
                         pointerPlayerStatus = 0x0827AFC0;
