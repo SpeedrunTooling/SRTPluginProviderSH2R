@@ -58,6 +58,13 @@ namespace SRTPluginProviderSH2R
         {
             switch (version)
             {
+                case GameVersion.SH2R_20250130_090048:
+                default:
+                    {
+                        pointerPlayerStatus = 0x082B5E30;
+                        pointerEnemyStatus = 0x082D46F0;
+                        return version;
+                    }
                 case GameVersion.SH2R_20241025_110158:
                     {
                         pointerPlayerStatus = 0x0827B040;
@@ -76,8 +83,6 @@ namespace SRTPluginProviderSH2R
                         pointerEnemyStatus = 0x08876338;
                         return version;
                     }
-                default:
-                    return GameVersion.Unknown;
             }
         }
 
@@ -94,8 +99,12 @@ namespace SRTPluginProviderSH2R
             PointerPlayerStatus.TryDerefFloat(0xF8, ref gameMemoryValues.playerHP);
 
             for (int i = 0; i < GameMemorySH2R.ENEMY_ARRAY_SIZE; ++i)
-                if (!PointerEnemyStatus[i].TryDerefFloat(0xCC, ref gameMemoryValues.enemyHP[i]))
-                    gameMemoryValues.enemyHP[i] = 0f;
+            {
+                if (PointerEnemyStatus[i].TryDerefFloat(0xCC, ref gameMemoryValues.enemyHP[i].hp))
+                    gameMemoryValues.enemyHP[i].isValid = true;
+                else
+                    gameMemoryValues.enemyHP[i].isValid = false;
+            }
 
             HasScanned = true;
             return gameMemoryValues;

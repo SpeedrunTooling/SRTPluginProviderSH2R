@@ -2,22 +2,14 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <Platforms>x64</Platforms>
-    <Authors>SpeedrunTooling</Authors>
-    <Company>$(Authors)</Company>
-    <Copyright>Copyright © 2024 $(Authors)</Copyright>
     <Product>Silent Hill 2 (2024) Memory Provider Plugin</Product>
-    <Description>A provider plugin for the SRT Host to provide memory values to other plugins.</Description>
-    <Version>1.0.3</Version>
-    <FileVersion>1.0.3</FileVersion>
-    <AssemblyVersion>3.0.0.0</AssemblyVersion>
-    <DebugType>embedded</DebugType>
+    <Description>A producer plugin for the SRT Host to provide memory values to other plugins.</Description>
+    <Version>1.0.4</Version>
+    <FileVersion>1.0.4</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <!-- netcoreapp3.1 had to be hardcoded here because this project reports $(TargetFramework) as netstandard2.0 (rightfully so) and I am not sure how this project's csproj can auto-detect another project's framework version to copy it to the appropriate folder so we're just... hardcoding this. -->
 	<CopyDestionationPath>$(SolutionDir)..\..\SpeedRunTool\SRTHost\SRTHost\bin\$(Configuration)\net5.0-windows\plugins</CopyDestionationPath>
 	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <Target Name="CopyOutputToDestination" AfterTargets="AfterBuild">
@@ -28,15 +20,11 @@
     <Copy SourceFiles="@(OutputFiles)" DestinationFolder="$(CopyDestionationPath)\$(ProjectName)\%(RecursiveDir)" OverwriteReadOnlyFiles="true"></Copy>
   </Target>
 
-  <ItemGroup>
-    <PackageReference Include="ProcessMemory64" Version="4.0.*-*" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\SpeedRunTool\SRTHost\SRTPluginBase\SRTPluginBase.csproj">
-      <Private>false</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
-    </ProjectReference>
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\SpeedRunTool\SRTHost\SRTPluginBase\SRTPluginBase.csproj">
+			<Private>false</Private>
+			<ExcludeAssets>runtime</ExcludeAssets>
+		</ProjectReference>
+	</ItemGroup>
 
 </Project>
