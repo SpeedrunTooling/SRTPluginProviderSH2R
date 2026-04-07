@@ -13,14 +13,14 @@ jobs:
       working-directory: .
       project-name: SRTPluginProviderSH2R
       platform: x64
-      buildConfig: Release
+      configuration: Release
     outputs:
       project-name: ${{env.project-name}}
       solution: ${{steps.generated-variables-1.outputs.solution}}
       project: ${{steps.generated-variables-1.outputs.project}}
       build-directory: ${{steps.generated-variables-1.outputs.build-directory}}
       zip-filename: ${{steps.generated-variables-2.outputs.zip-filename}}
-      version: ${{steps.project-version-string.outputs.Version}}
+      version: ${{steps.get_version.outputs.RELEASE_VERSION}}
 
     steps:
       # Checkout latest code
@@ -28,7 +28,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
 
       # Create repo user folder for the dependencies
       - name: Create repo user folder
@@ -39,7 +38,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: master
           path: SRTHost
           repository: SpeedRunTool/SRTHost
 
@@ -47,20 +45,21 @@ jobs:
       - name: Move SRTHost down a folder to work with existing csproj pathing
         run: Move-Item -Path SRTHost -Destination ..\..\SpeedRunTool
 
+      # Create repo user folder for the dependencies
+      - name: Create repo user folder
+        run: New-Item -ItemType directory -Path ..\..\Squirrelies
+
       # Checkout latest dependencies code
-      - name: Checkout SRTPluginBase
-        if: env.buildConfig == 'Debug'
+      - name: Checkout ProcessMemory
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
-          path: SRTPluginBase
-          repository: SpeedRunTool/SRTPluginBase
+          path: ProcessMemory
+          repository: Squirrelies/ProcessMemory
 
       # GITHUB_WORKSPACE pathing is ass. Move this directory down one level.
-      - name: Move SRTPluginBase down a folder to work with existing csproj pathing
-        if: env.buildConfig == 'Debug'
-        run: Move-Item -Path SRTPluginBase -Destination ..\..\SpeedRunTool
+      - name: Move ProcessMemory down a folder to work with existing csproj pathing
+        run: Move-Item -Path ProcessMemory -Destination ..\..\Squirrelies
 
       # Set some output variables
       - name: Set the main environment variables based on other environment variables
@@ -68,41 +67,32 @@ jobs:
         run: |
           echo '::set-output name=solution::${{env.project-name}}.sln'
           echo '::set-output name=project::${{env.project-name}}/${{env.project-name}}.csproj'
-          echo '::set-output name=build-directory::${{env.project-name}}/bin/${{env.platform}}/${{env.buildConfig}}/net5.0/'
+          echo '::set-output name=build-directory::${{env.project-name}}/bin/Release/${{env.platform}}/net5.0/'
 
       # Get the project's version number
-      - name: Get project version information
-        id: project-versions
-        run: |
-          Select-String -Path "${{steps.generated-variables-1.outputs.project}}" '<(?<TagName>\w*?Version)>(?<Major>\d+)(?:\.(?<Minor>\d+))(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?(?:\.(?<Patch>\d+)|-(?<Quality>\w+)|\+(?<Tag>\w+))?</\w*?Version>' -AllMatches | Foreach-Object -Process {$_.Matches} | Foreach-Object -Process { $tagName = $_.Groups["TagName"].Value; $_.Groups | Where-Object { $_.Name -ne "0" -and $_.Name -ne "TagName"; } } | Foreach-Object -Process { $tagName + "_" + $_.Name + "=" + $_.Value >> $env:GITHUB_OUTPUT }
-
-      - name: Set project version string
-        id: project-version-string
-        run: |
-          echo 'Version=${{steps.project-versions.outputs.Version_Major}}.${{steps.project-versions.outputs.Version_Minor}}.${{steps.project-versions.outputs.Version_Patch}}' >> $env:GITHUB_OUTPUT
-
-      - name: Ensure we detected the version properly
-        id: assert-version
-        if: ${{ steps.project-version-string.outputs.Version == '..' }}
-        run: exit 1
+      - name: Get project version
+        id: get_version
+        uses: greenygh0st/net-proj-release-version@v2
+        with:
+          PROJ_FILE: ${{steps.generated-variables-1.outputs.project}}
 
       # Sets the zip-filename output variable based on the project version
       - name: Sets the zip-filename environment variable based on the project version
         id: generated-variables-2
         run: |
-          echo '::set-output name=zip-filename::${{env.project-name}}-v${{steps.project-version-string.outputs.Version}}.zip'
+          echo '::set-output name=zip-filename::${{env.project-name}}-v${{steps.get_version.outputs.RELEASE_VERSION}}.zip'
 
       # Install .NET
-      - name: Install .NET
+      - name: Install .NET Core
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 5.0.x
+          dotnet-version: "5.0.x"
           dotnet-quality: "ga"
 
       # Compiles the plugin
       - name: Compile the plugin
         run: |
-          dotnet build ${{steps.generated-variables-1.outputs.solution}} -c "${{env.buildConfig}}" /p:Platform="${{env.platform}}"
+          dotnet build ${{steps.generated-variables-1.outputs.solution}} -c "${{env.configuration}}" /p:Platform="${{env.platform}}"
 
       - name: Upload publish artifacts
         uses: actions/upload-artifact@v4
@@ -124,7 +114,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -150,6 +139,6 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "latest"
           prerelease: ${{env.is-prerelease}}
-          title: "Manual Build - ${{needs.build.outputs.version}} Release"
+          title: "Automated Build - ${{needs.build.outputs.version}} Release"
           files: |
             ${{needs.build.outputs.zip-filename}}
